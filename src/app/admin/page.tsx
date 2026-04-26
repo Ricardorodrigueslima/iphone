@@ -7,6 +7,7 @@ import DeviceTable from "@/components/DeviceTable";
 import LoginForm from "@/components/LoginForm";
 import { Device, DashboardStats } from "@/types";
 import { calculateStats } from "@/lib/devices";
+import { StoreSettings } from "@/lib/storage";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -16,6 +17,10 @@ export default function AdminPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [settings, setSettings] = useState<StoreSettings>({ taxaJuros: 0 });
+  const [taxaInput, setTaxaInput] = useState("0");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
 
   useEffect(() => {
     const auth = localStorage.getItem("admin_auth");
@@ -24,6 +29,17 @@ export default function AdminPage() {
     }
     setShowLogin(true);
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s) => {
+        setSettings(s);
+        setTaxaInput(String(s.taxaJuros ?? 0));
+      })
+      .catch(console.error);
+  }, [isAuthenticated]);
 
   const fetchDevices = useCallback(async () => {
     try {
@@ -93,6 +109,30 @@ export default function AdminPage() {
       alert("Erro ao excluir dispositivo");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    setSettingsSaved(false);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taxaJuros: parseFloat(taxaInput) || 0 }),
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setSettings(updated);
+        setSettingsSaved(true);
+        setTimeout(() => setSettingsSaved(false), 2500);
+      } else {
+        alert("Erro ao salvar configurações");
+      }
+    } catch {
+      alert("Erro ao salvar configurações");
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -185,6 +225,39 @@ export default function AdminPage() {
           onMarkSold={handleMarkSold}
           actionLoading={actionLoading}
         />
+
+        {/* Configurações */}
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Configurações da Loja
+          </h2>
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Taxa de juros da maquininha (% ao mês)
+              </label>
+              <input
+                type="number"
+                value={taxaInput}
+                onChange={(e) => setTaxaInput(e.target.value)}
+                min="0"
+                step="0.01"
+                placeholder="Ex: 3.99"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Usada para simular o parcelamento no catálogo. Zero = parcelas sem juros.
+              </p>
+            </div>
+            <button
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 transition-colors font-medium whitespace-nowrap"
+            >
+              {savingSettings ? "Salvando..." : settingsSaved ? "Salvo!" : "Salvar taxa"}
+            </button>
+          </div>
+        </div>
       </main>
     </div>
   );

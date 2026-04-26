@@ -1,25 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, writeFile } from "fs/promises";
-import { join } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { Device, DeviceFormData } from "@/types";
+import { getDevices, setDevices } from "@/lib/storage";
 
-const DATA_FILE = join(process.cwd(), "data", "devices.json");
-
-async function readDevices(): Promise<Device[]> {
-  try {
-    const data = await readFile(DATA_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-async function writeDevices(devices: Device[]): Promise<void> {
-  await writeFile(DATA_FILE, JSON.stringify(devices, null, 2), "utf-8");
-}
-
-function calculateLucroMargem(precoCusto: number, precoVenda: number) {
+function calcLucroMargem(precoCusto: number, precoVenda: number) {
   const lucro = precoVenda - precoCusto;
   const margem = precoCusto > 0 ? (lucro / precoCusto) * 100 : 0;
   return {
@@ -30,28 +14,28 @@ function calculateLucroMargem(precoCusto: number, precoVenda: number) {
 
 export async function GET() {
   try {
-    const devices = await readDevices();
+    const devices = await getDevices();
     return NextResponse.json(devices);
   } catch (error) {
-    console.error("Error reading devices:", error);
-    return NextResponse.json({ error: "Failed to fetch devices" }, { status: 500 });
+    console.error("GET /api/devices error:", error);
+    return NextResponse.json({ error: "Erro ao buscar dispositivos" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: DeviceFormData = await request.json();
-    const { lucro, margem } = calculateLucroMargem(body.precoCusto, body.precoVenda);
-
-    const devices = await readDevices();
+    const { lucro, margem } = calcLucroMargem(body.precoCusto, body.precoVenda);
     const newDevice: Device = { id: uuidv4(), ...body, lucro, margem };
+
+    const devices = await getDevices();
     devices.push(newDevice);
-    await writeDevices(devices);
+    await setDevices(devices);
 
     return NextResponse.json(newDevice, { status: 201 });
   } catch (error) {
-    console.error("Error creating device:", error);
-    return NextResponse.json({ error: "Failed to create device" }, { status: 500 });
+    console.error("POST /api/devices error:", error);
+    return NextResponse.json({ error: "Erro ao cadastrar dispositivo" }, { status: 500 });
   }
 }
 
@@ -60,25 +44,25 @@ export async function PUT(request: NextRequest) {
     const body: { id: string; data: Partial<DeviceFormData> } = await request.json();
     const { id, data } = body;
 
-    const devices = await readDevices();
+    const devices = await getDevices();
     const index = devices.findIndex((d) => d.id === id);
 
     if (index === -1) {
-      return NextResponse.json({ error: "Device not found" }, { status: 404 });
+      return NextResponse.json({ error: "Dispositivo não encontrado" }, { status: 404 });
     }
 
     const existing = devices[index];
     const precoCusto = data.precoCusto ?? existing.precoCusto;
     const precoVenda = data.precoVenda ?? existing.precoVenda;
-    const { lucro, margem } = calculateLucroMargem(precoCusto, precoVenda);
+    const { lucro, margem } = calcLucroMargem(precoCusto, precoVenda);
 
     devices[index] = { ...existing, ...data, lucro, margem };
-    await writeDevices(devices);
+    await setDevices(devices);
 
     return NextResponse.json(devices[index]);
   } catch (error) {
-    console.error("Error updating device:", error);
-    return NextResponse.json({ error: "Failed to update device" }, { status: 500 });
+    console.error("PUT /api/devices error:", error);
+    return NextResponse.json({ error: "Erro ao atualizar dispositivo" }, { status: 500 });
   }
 }
 
@@ -88,20 +72,20 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ error: "Device ID is required" }, { status: 400 });
+      return NextResponse.json({ error: "ID obrigatório" }, { status: 400 });
     }
 
-    const devices = await readDevices();
+    const devices = await getDevices();
     const filtered = devices.filter((d) => d.id !== id);
 
     if (filtered.length === devices.length) {
-      return NextResponse.json({ error: "Device not found" }, { status: 404 });
+      return NextResponse.json({ error: "Dispositivo não encontrado" }, { status: 404 });
     }
 
-    await writeDevices(filtered);
+    await setDevices(filtered);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting device:", error);
-    return NextResponse.json({ error: "Failed to delete device" }, { status: 500 });
+    console.error("DELETE /api/devices error:", error);
+    return NextResponse.json({ error: "Erro ao excluir dispositivo" }, { status: 500 });
   }
 }

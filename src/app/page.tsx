@@ -20,6 +20,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 
 export default function Home() {
   const [devices, setDevices] = useState<Device[]>([]);
+  const [taxaJuros, setTaxaJuros] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     marca: "",
@@ -29,9 +30,14 @@ export default function Home() {
   });
 
   useEffect(() => {
-    fetch("/api/devices")
-      .then((r) => r.json())
-      .then(setDevices)
+    Promise.all([
+      fetch("/api/devices").then((r) => r.json()),
+      fetch("/api/settings").then((r) => r.json()),
+    ])
+      .then(([devicesData, settingsData]) => {
+        setDevices(devicesData);
+        setTaxaJuros(settingsData.taxaJuros ?? 0);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -141,6 +147,7 @@ export default function Home() {
                   device={device}
                   whatsappNumber={WHATSAPP_NUMBER}
                   variant="featured"
+                  taxaJuros={taxaJuros}
                 />
               ))}
             </div>
@@ -182,6 +189,7 @@ export default function Home() {
                   key={device.id}
                   device={device}
                   whatsappNumber={WHATSAPP_NUMBER}
+                  taxaJuros={taxaJuros}
                 />
               ))}
             </div>
@@ -209,6 +217,7 @@ export default function Home() {
                     key={device.id}
                     device={device}
                     whatsappNumber={WHATSAPP_NUMBER}
+                    taxaJuros={taxaJuros}
                   />
                 ))}
               </div>

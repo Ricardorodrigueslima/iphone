@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Device } from "@/types";
 import {
@@ -14,6 +15,15 @@ interface DeviceCardProps {
   device: Device;
   whatsappNumber: string;
   variant?: "default" | "featured";
+  taxaJuros?: number;
+}
+
+const PARCELAS = [2, 3, 4, 6, 10, 12];
+
+function calcPMT(preco: number, taxaMensal: number, n: number): number {
+  if (taxaMensal <= 0) return preco / n;
+  const i = taxaMensal / 100;
+  return (preco * i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1);
 }
 
 const WhatsAppIcon = () => (
@@ -26,7 +36,9 @@ export default function DeviceCard({
   device,
   whatsappNumber,
   variant = "default",
+  taxaJuros = 0,
 }: DeviceCardProps) {
+  const [showSimulator, setShowSimulator] = useState(false);
   const isAvailable = device.status === "Disponível";
   const isFeatured = variant === "featured";
 
@@ -36,6 +48,8 @@ export default function DeviceCard({
     device.whatsappMsg || undefined
   );
   const whatsappUrl = getWhatsappUrl(whatsappNumber, message);
+
+  const pmt12 = calcPMT(device.precoVenda, taxaJuros, 12);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
@@ -89,14 +103,58 @@ export default function DeviceCard({
           {device.armazenamento}
         </p>
 
-        <div className="mt-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Preço</p>
-            <p className={`font-bold text-gray-900 dark:text-white ${isFeatured ? "text-2xl" : "text-xl"}`}>
-              {formatCurrency(device.precoVenda)}
+        <div className="mt-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400">Preço</p>
+          <p className={`font-bold text-gray-900 dark:text-white ${isFeatured ? "text-2xl" : "text-xl"}`}>
+            {formatCurrency(device.precoVenda)}
+          </p>
+          {isAvailable && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              ou 12x de {formatCurrency(pmt12)}
+              {taxaJuros > 0 && ` (${taxaJuros.toFixed(2)}% a.m.)`}
             </p>
-          </div>
+          )}
         </div>
+
+        {/* Simulador de parcelas */}
+        {isAvailable && (
+          <div className="mt-2">
+            <button
+              onClick={() => setShowSimulator(!showSimulator)}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              {showSimulator ? "Ocultar parcelas" : "Ver parcelas ▾"}
+            </button>
+            {showSimulator && (
+              <div className="mt-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                {taxaJuros > 0 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    Taxa: {taxaJuros.toFixed(2)}% ao mês
+                  </p>
+                )}
+                <div className="space-y-1">
+                  {PARCELAS.map((n) => {
+                    const pmt = calcPMT(device.precoVenda, taxaJuros, n);
+                    const total = pmt * n;
+                    return (
+                      <div key={n} className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-gray-800 dark:text-gray-200 w-8">
+                          {n}x
+                        </span>
+                        <span className="text-gray-900 dark:text-white font-medium">
+                          {formatCurrency(pmt)}
+                        </span>
+                        <span className="text-gray-400 dark:text-gray-500">
+                          Total: {formatCurrency(total)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {isAvailable ? (
           <a
