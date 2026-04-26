@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { kv } from "@vercel/kv";
+import { unstable_noStore as noStore } from "next/cache";
 import { Device } from "@/types";
 
 const DATA_FILE = join(process.cwd(), "data", "devices.json");
@@ -15,6 +16,7 @@ const DEFAULT_SETTINGS: StoreSettings = { taxaJuros: 0 };
 const USE_KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 
 export async function getDevices(): Promise<Device[]> {
+  noStore();
   if (USE_KV) {
     const stored = await kv.get<Device[]>("devices");
     if (stored != null) return stored;
@@ -45,6 +47,7 @@ export async function setDevices(devices: Device[]): Promise<void> {
 }
 
 export async function getSettings(): Promise<StoreSettings> {
+  noStore();
   if (USE_KV) {
     const stored = await kv.get<StoreSettings>("settings");
     return stored ?? DEFAULT_SETTINGS;
