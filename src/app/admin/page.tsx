@@ -124,10 +124,12 @@ export default function AdminPage() {
       if (response.ok) {
         const updated = await response.json();
         setSettings(updated);
+        setTaxaInput(String(updated.taxaJuros));
         setSettingsSaved(true);
         setTimeout(() => setSettingsSaved(false), 2500);
       } else {
-        alert("Erro ao salvar configurações");
+        const err = await response.json().catch(() => ({}));
+        alert("Erro ao salvar: " + (err.error || response.status));
       }
     } catch {
       alert("Erro ao salvar configurações");

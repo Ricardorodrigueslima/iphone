@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
+import { kv } from "@vercel/kv";
 import { Device } from "@/types";
 
 const DATA_FILE = join(process.cwd(), "data", "devices.json");
@@ -11,16 +12,13 @@ export interface StoreSettings {
 
 const DEFAULT_SETTINGS: StoreSettings = { taxaJuros: 0 };
 
-function hasKV(): boolean {
-  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
-}
+const USE_KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 
 export async function getDevices(): Promise<Device[]> {
-  if (hasKV()) {
-    const { kv } = await import("@vercel/kv");
+  if (USE_KV) {
     const stored = await kv.get<Device[]>("devices");
     if (stored != null) return stored;
-    // Auto-migrate bundled JSON file on first deploy
+    // Auto-migra o JSON bundled na primeira execução em produção
     try {
       const data = await readFile(DATA_FILE, "utf-8");
       const devices: Device[] = JSON.parse(data);
@@ -39,8 +37,7 @@ export async function getDevices(): Promise<Device[]> {
 }
 
 export async function setDevices(devices: Device[]): Promise<void> {
-  if (hasKV()) {
-    const { kv } = await import("@vercel/kv");
+  if (USE_KV) {
     await kv.set("devices", devices);
     return;
   }
@@ -48,8 +45,7 @@ export async function setDevices(devices: Device[]): Promise<void> {
 }
 
 export async function getSettings(): Promise<StoreSettings> {
-  if (hasKV()) {
-    const { kv } = await import("@vercel/kv");
+  if (USE_KV) {
     const stored = await kv.get<StoreSettings>("settings");
     return stored ?? DEFAULT_SETTINGS;
   }
@@ -62,8 +58,7 @@ export async function getSettings(): Promise<StoreSettings> {
 }
 
 export async function setSettings(settings: StoreSettings): Promise<void> {
-  if (hasKV()) {
-    const { kv } = await import("@vercel/kv");
+  if (USE_KV) {
     await kv.set("settings", settings);
     return;
   }
