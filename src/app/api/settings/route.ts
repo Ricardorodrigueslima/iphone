@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSettings, setSettings } from "@/lib/storage";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const settings = await getSettings();
@@ -18,7 +20,8 @@ export async function PUT(request: NextRequest) {
     await setSettings(updated);
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("PUT /api/settings error:", error);
-    return NextResponse.json({ error: "Erro ao salvar" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("PUT /api/settings error:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
