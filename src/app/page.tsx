@@ -31,8 +31,8 @@ export default function Home() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/devices").then((r) => r.json()),
-      fetch("/api/settings").then((r) => r.json()),
+      fetch("/api/devices", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/settings", { cache: "no-store" }).then((r) => r.json()),
     ])
       .then(([devicesData, settingsData]) => {
         setDevices(devicesData);
