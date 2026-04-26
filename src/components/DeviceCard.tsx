@@ -18,8 +18,9 @@ interface DeviceCardProps {
   taxaJuros?: number;
 }
 
-const PARCELAS = [2, 3, 4, 6, 10, 12];
+const PARCELAS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
+// Tabela Price (juros compostos): PMT = PV × [i(1+i)^n] / [(1+i)^n - 1]
 function calcPMT(preco: number, taxaMensal: number, n: number): number {
   if (taxaMensal <= 0) return preco / n;
   const i = taxaMensal / 100;
@@ -123,29 +124,50 @@ export default function DeviceCard({
               onClick={() => setShowSimulator(!showSimulator)}
               className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
-              {showSimulator ? "Ocultar parcelas" : "Ver parcelas ▾"}
+              {showSimulator ? "Ocultar parcelas ▴" : "Ver parcelas ▾"}
             </button>
             {showSimulator && (
-              <div className="mt-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+              <div className="mt-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg overflow-hidden">
                 {taxaJuros > 0 && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                    Taxa: {taxaJuros.toFixed(2)}% ao mês
-                  </p>
+                  <div className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      Tabela Price · {taxaJuros.toFixed(2)}% a.m. (juros compostos)
+                    </p>
+                  </div>
                 )}
-                <div className="space-y-1">
+                {/* À vista */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-600 bg-green-50 dark:bg-green-900/10">
+                  <span className="text-xs font-bold text-green-700 dark:text-green-400">
+                    À vista
+                  </span>
+                  <span className="text-xs font-bold text-green-700 dark:text-green-400">
+                    {formatCurrency(device.precoVenda)}
+                  </span>
+                  <span className="text-xs text-green-600 dark:text-green-500">
+                    sem juros
+                  </span>
+                </div>
+                {/* Parcelado */}
+                <div className="divide-y divide-gray-100 dark:divide-gray-600">
                   {PARCELAS.map((n) => {
                     const pmt = calcPMT(device.precoVenda, taxaJuros, n);
                     const total = pmt * n;
+                    const acrescimo = total - device.precoVenda;
                     return (
-                      <div key={n} className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-gray-800 dark:text-gray-200 w-8">
+                      <div key={n} className="flex items-center justify-between px-3 py-2 text-xs">
+                        <span className="font-semibold text-gray-700 dark:text-gray-300 w-7">
                           {n}x
                         </span>
-                        <span className="text-gray-900 dark:text-white font-medium">
+                        <span className="font-bold text-gray-900 dark:text-white">
                           {formatCurrency(pmt)}
                         </span>
-                        <span className="text-gray-400 dark:text-gray-500">
-                          Total: {formatCurrency(total)}
+                        <span className="text-gray-400 dark:text-gray-500 text-right">
+                          Total {formatCurrency(total)}
+                          {taxaJuros > 0 && (
+                            <span className="text-orange-500 dark:text-orange-400 block">
+                              +{formatCurrency(acrescimo)}
+                            </span>
+                          )}
                         </span>
                       </div>
                     );
